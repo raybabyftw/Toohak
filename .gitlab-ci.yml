@@ -1,0 +1,28 @@
+image: comp1531/basic:latest
+
+stages:
+  - checks
+
+before_script:
+  - npm install
+
+tests:
+  stage: checks
+  only:
+    - master
+    - merge_requests
+  script:
+    - SERVER_LOG=$(mktemp)
+    - npm run start >& $SERVER_LOG &
+    - timeout 10s grep -q "⚡️ Server started on port" <(tail -f $SERVER_LOG) || (echo "Server failed to start" && cat $SERVER_LOG && exit 1)
+    - timeout -s SIGINT 180s npm run test || (echo "Tests took too long" && cat $SERVER_LOG && exit 1)
+    - kill -SIGINT %1
+    - sleep 2
+    - cat $SERVER_LOG
+linting:
+  stage: checks
+  only:
+    - master
+    - merge_requests
+  script:
+    - npm run lint
